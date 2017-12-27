@@ -39,9 +39,48 @@ func Verbose(verbose bool) {
 	//logDebugCrypto = log.New(out, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-var pad = []byte{
-	0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08,
-	0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
+var (
+	pad = []byte{
+		0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08,
+		0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
+	}
+
+	nullPad = []byte{
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	}
+)
+
+// NewEncryptDict creates a new EncryptDict using the standard security handler.
+func NewEncryptDict() *types.PDFDict {
+
+	d := types.NewPDFDict()
+
+	//d.Insert("Type", PDFName("Encrypt"))
+
+	d.Insert("Filter", types.PDFName("Standard"))
+	d.Insert("Length", types.PDFInteger(128))
+	d.Insert("R", types.PDFInteger(4))
+	d.Insert("V", types.PDFInteger(4))
+	d.Insert("P", types.PDFInteger(-4))
+	d.Insert("StmF", types.PDFName("StdCF"))
+	d.Insert("StrF", types.PDFName("StdCF"))
+
+	d1 := types.NewPDFDict()
+	d1.Insert("AuthEvent", types.PDFName("DocOpen"))
+	d1.Insert("CFM", types.PDFName("AESV2"))
+	d1.Insert("Length", types.PDFInteger(16))
+
+	d2 := types.NewPDFDict()
+	d2.Insert("StdCF", d1)
+
+	d.Insert("CF", d2)
+
+	h := "0000000000000000000000000000000000000000000000000000000000000000"
+	d.Insert("U", types.PDFHexLiteral(h))
+	d.Insert("O", types.PDFHexLiteral(h))
+
+	return &d
 }
 
 func encKey(userpw string, e *types.Enc) (key []byte) {
@@ -246,6 +285,10 @@ func U(ctx *types.PDFContext) (u []byte, key []byte, err error) {
 			}
 			c.XORKeyStream(u, u)
 		}
+	}
+
+	if len(u) < 32 {
+		u = append(u, nullPad[:32-len(u)]...)
 	}
 
 	return u, key, nil
@@ -456,7 +499,7 @@ func checkV(ctx *types.PDFContext, dict *types.PDFDict) (v *int, err error) {
 	return v, nil
 }
 
-func getLength(dict *types.PDFDict) (int, error) {
+func length(dict *types.PDFDict) (int, error) {
 
 	l := dict.IntEntry("Length")
 	if l == nil {
@@ -480,7 +523,8 @@ func getR(dict *types.PDFDict) (int, error) {
 	return *r, nil
 }
 
-// SupportedEncryption returns true if used encryption is supported by pdfcpu.
+// SupportedEncryption returns true if used encryption is supported by pdfcpu
+// Also returns a pointer to a struct encapsulating used encryption.
 func SupportedEncryption(ctx *types.PDFContext, dict *types.PDFDict) (*types.Enc, error) {
 
 	var err error
@@ -505,7 +549,7 @@ func SupportedEncryption(ctx *types.PDFContext, dict *types.PDFDict) (*types.Enc
 	}
 
 	// Length
-	length, err := getLength(dict)
+	l, err := length(dict)
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +594,7 @@ func SupportedEncryption(ctx *types.PDFContext, dict *types.PDFDict) (*types.Enc
 		encMeta = *emd
 	}
 
-	return &types.Enc{O: o, U: u, L: length, P: *p, R: r, V: *v, Emd: encMeta}, nil
+	return &types.Enc{O: o, U: u, L: l, P: *p, R: r, V: *v, Emd: encMeta}, nil
 }
 
 func decryptKey(objNumber, generation int, key []byte, aes bool) []byte {

@@ -53,7 +53,7 @@ func sortFOKeys(m map[int]*types.FontObject) (j []int) {
 }
 
 // Stupid dump of the font file for this font object.
-// Right now only for True Type fonts.
+// Right now only True Type fonts are supported.
 func writeFontObject(ctx *types.PDFContext, objNumber int, fontFileIndRefs map[types.PDFIndirectRef]bool) (err error) {
 
 	fontObject := ctx.Optimize.FontObjects[objNumber]

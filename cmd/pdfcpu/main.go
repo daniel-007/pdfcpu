@@ -161,7 +161,7 @@ func parseFlagsAndGetCommand() (command string) {
 	command = os.Args[1]
 
 	i := 2
-	// The attach command uses a subcommand and therefore a special case => start flag processing after 3rd argument.
+	// The attach command uses a subcommand and is therefore a special case => start flag processing after 3rd argument.
 	if command == "attach" {
 		if len(os.Args) == 2 {
 			fmt.Fprintln(os.Stderr, usageAttach)
@@ -582,7 +582,7 @@ func main() {
 		cmd = prepareValidateCommand(config)
 
 	case "optimize", "o":
-		// Always write using 0x0A end of line sequence per default.
+		// Always write using 0x0A end of line sequence default.
 		cmd = prepareOptimizeCommand(config)
 
 	case "split", "s":

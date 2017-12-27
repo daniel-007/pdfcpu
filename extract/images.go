@@ -11,7 +11,7 @@ import (
 )
 
 // Stupid dump of image data to a file.
-// Right now supported are:
+// Right now supported:
 // "DCTDecode" dumps to a jpg file.
 // "JPXDecode" dumps to a jpx file.
 func writeImage(fileName string, imageDict *types.PDFStreamDict, objNr int) (err error) {
